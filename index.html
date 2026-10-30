@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Will We Hit Enrollment? — Trial Enrollment Forecaster | Jane Natividad</title>
+<meta name="description" content="A Monte Carlo trial-enrollment forecaster: simulates site start-up and patient recruitment thousands of times and shows the odds of hitting the enrollment target by your deadline.">
+<style>
+  * { box-sizing: border-box; }
+  :root {
+    --accent: #0071e3; --accent-soft: #e8f2ff; --accent-border: #cce2ff;
+    --ink: #1d1d1f; --ink-soft: #48484a; --muted: #6e6e73;
+    --hairline: #e5e5e7; --panel: #f5f5f7; --bg: #ffffff;
+    --good: #1a7f4e; --good-soft: #e7f6ee;
+    --warn: #9a6b00; --warn-soft: #fff6e0;
+    --bad: #b3261e; --bad-soft: #fdecea;
+  }
+  html, body { margin: 0; padding: 0; background: var(--bg); color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Helvetica Neue", Arial, sans-serif; }
+  .wrap { max-width: 800px; margin: 0 auto; padding: 56px 24px 80px; }
+  .back-link { display: inline-block; font-size: 12px; color: var(--muted); text-decoration: none; margin-bottom: 22px; }
+  .back-link:hover { color: var(--accent); }
+  .eyebrow { font-size: 11.5px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent); font-weight: 600; margin-bottom: 14px; }
+  h1 { font-size: 30px; font-weight: 700; letter-spacing: -0.02em; margin: 0 0 14px; line-height: 1.18; text-wrap: balance; }
+  h2 { font-size: 17px; font-weight: 650; margin: 0 0 8px; letter-spacing: -0.01em; }
+  .byline { font-size: 12.8px; color: var(--muted); margin: 0 0 28px; }
+  .byline a { color: var(--muted); }
+  p { font-size: 14.5px; line-height: 1.62; color: var(--ink-soft); margin: 0 0 16px; }
+  .lede { font-size: 15.5px; line-height: 1.6; color: var(--ink); background: var(--panel); border-radius: 14px; padding: 20px 24px; margin: 0 0 28px; }
+  .section-label { font-size: 10.5px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); font-weight: 600; margin: 36px 0 14px; }
+  .section-sub { font-size: 13px; color: var(--ink-soft); margin: -6px 0 14px; line-height: 1.55; }
+  .panel { background: var(--panel); border-radius: 14px; padding: 20px 22px; margin: 0 0 18px; }
+  .card { border: 1px solid var(--hairline); border-radius: 12px; padding: 14px 16px; background: #fff; }
+  .card.top { border-color: var(--accent-border); background: var(--accent-soft); }
+  .stack { display: flex; flex-direction: column; gap: 10px; }
+  .pipeline { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 8px; }
+  .pipe-step { flex: 1 1 auto; min-width: 130px; background: var(--panel); border: 1px solid var(--hairline); border-radius: 10px; padding: 10px 12px; font-size: 11.3px; color: var(--ink-soft); line-height: 1.4; }
+  .pipe-step b { display: block; font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--accent); margin-bottom: 3px; }
+  .pipeline-note { font-size: 11.5px; color: var(--muted); margin: 0 0 24px; }
+  .btn { font-size: 12px; font-weight: 600; color: var(--accent); background: #fff; border: 1px solid var(--accent-border); border-radius: 8px; padding: 7px 13px; cursor: pointer; font-family: inherit; }
+  .btn:hover { background: var(--accent-soft); }
+  .btn.primary { color: #fff; background: var(--accent); border-color: var(--accent); }
+  .btn.primary:hover { background: #005bbf; }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .chip { font-size: 11.8px; color: var(--accent); background: #fff; border: 1px solid var(--accent-border); border-radius: 999px; padding: 6px 13px; cursor: pointer; font-family: inherit; text-align: left; }
+  .chip:hover { background: var(--accent-soft); }
+  .chip.on { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .tag { display: inline-block; font-size: 10.3px; font-weight: 700; letter-spacing: 0.04em; border-radius: 999px; padding: 3px 9px; white-space: nowrap; }
+  .tag.good { color: var(--good); background: var(--good-soft); }
+  .tag.warn { color: var(--warn); background: var(--warn-soft); }
+  .tag.bad { color: var(--bad); background: var(--bad-soft); }
+  .tag.info { color: var(--accent); background: var(--accent-soft); }
+  .tag.mute { color: var(--muted); background: var(--panel); }
+  .bar-track { height: 7px; background: var(--hairline); border-radius: 999px; overflow: hidden; }
+  .bar-fill { height: 100%; background: var(--accent); border-radius: 999px; transition: width 0.25s ease; }
+  input[type=text], input[type=password], select, textarea { font-family: inherit; font-size: 13px; padding: 9px 12px; border-radius: 8px; border: 1px solid var(--hairline); background: #fff; color: var(--ink); }
+  textarea { width: 100%; resize: vertical; line-height: 1.5; }
+  input:focus, select:focus, textarea:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .gov-grid { display: flex; flex-direction: column; gap: 10px; margin: 0 0 32px; }
+  .gov-item { display: flex; gap: 12px; border: 1px solid var(--hairline); border-radius: 12px; padding: 13px 16px; }
+  .gov-icon { flex: 0 0 auto; width: 26px; height: 26px; border-radius: 50%; background: var(--accent-soft); color: var(--accent); display: flex; align-items: center; justify-content: center; font-size: 12.5px; font-weight: 700; }
+  .gov-text b { display: block; font-size: 12.8px; color: var(--ink); margin-bottom: 2px; }
+  .gov-text span { font-size: 12.2px; color: var(--ink-soft); line-height: 1.55; }
+  .not-list { font-size: 12.5px; color: var(--ink-soft); line-height: 1.7; margin: 0 0 32px; padding-left: 20px; }
+  .not-list li { margin-bottom: 6px; }
+  .why { font-size: 13.3px; font-style: italic; color: var(--ink); background: var(--panel); border-radius: 14px; padding: 18px 22px; margin: 0 0 32px; line-height: 1.58; }
+  .disclosure { font-size: 11.5px; line-height: 1.55; color: var(--muted); background: var(--panel); border-radius: 10px; padding: 12px 16px; margin: 0 0 32px; }
+  pre.out { white-space: pre-wrap; word-break: break-word; background: var(--panel); border-radius: 10px; padding: 14px 16px; font-size: 12px; line-height: 1.6; color: var(--ink-soft); font-family: ui-monospace, "SF Mono", Menlo, monospace; margin: 0; }
+  table.grid { width: 100%; border-collapse: collapse; font-size: 12.3px; }
+  table.grid th { text-align: left; font-size: 10.3px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); font-weight: 600; padding: 8px 8px; border-bottom: 1px solid var(--hairline); }
+  table.grid td { padding: 9px 8px; border-bottom: 1px solid var(--hairline); color: var(--ink-soft); vertical-align: top; }
+  .scroll-x { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  footer { border-top: 1px solid var(--hairline); padding-top: 20px; font-size: 12px; color: var(--muted); }
+  footer a { color: var(--accent); text-decoration: none; }
+  footer a:hover { text-decoration: underline; }
+  @media (max-width: 480px) { .wrap { padding: 40px 16px 60px; } h1 { font-size: 24px; } }
+  .sl-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px 22px; }
+  .sl-row { display: grid; grid-template-columns: 1fr auto; gap: 4px 10px; align-items: center; }
+  .sl-row label { font-size: 12.6px; font-weight: 600; color: var(--ink); }
+  .sl-val { font-size: 12.5px; font-weight: 700; color: var(--accent); font-variant-numeric: tabular-nums; }
+  .sl-row input[type=range] { grid-column: 1 / -1; width: 100%; accent-color: var(--accent); }
+  .sl-hint { grid-column: 1 / -1; font-size: 11px; color: var(--muted); margin-top: -2px; }
+  .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin: 0 0 14px; }
+  .kpi { border: 1px solid var(--hairline); border-radius: 12px; padding: 12px 14px; background: #fff; }
+  .kpi .k-l { font-size: 10.5px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+  .kpi .k-v { font-size: 22px; font-weight: 700; color: var(--ink); margin-top: 4px; font-variant-numeric: tabular-nums; }
+  .kpi .k-s { font-size: 11.5px; color: var(--muted); margin-top: 2px; }
+  .kpi.good .k-v { color: var(--good); } .kpi.warn .k-v { color: var(--warn); } .kpi.bad .k-v { color: var(--bad); }
+  .legend { display: flex; flex-wrap: wrap; gap: 14px; font-size: 11.5px; color: var(--ink-soft); margin: 6px 0 0; }
+  .legend i { display: inline-block; width: 14px; height: 3px; border-radius: 2px; vertical-align: middle; margin-right: 6px; }
+  .bars .bar-row { display: grid; grid-template-columns: 210px 1fr 64px; gap: 10px; align-items: center; font-size: 12.5px; color: var(--ink-soft); margin: 7px 0; }
+  .bars .bar-wrap { position: relative; height: 16px; background: var(--panel); border-radius: 4px; }
+  .bars .bar-wrap .mid { position: absolute; left: 50%; top: -2px; bottom: -2px; width: 1px; background: #c7c7cc; }
+  .bars .bar-wrap span { position: absolute; top: 0; height: 100%; border-radius: 4px; }
+  .bars .bar-num { text-align: right; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--ink); }
+  .model-card { font-size: 12.8px; line-height: 1.65; color: var(--ink-soft); }
+  .model-card h3 { font-size: 12px; letter-spacing: 0.05em; text-transform: uppercase; color: var(--ink); margin: 16px 0 6px; }
+  .model-card h3:first-child { margin-top: 0; }
+  .model-card code, .eq { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 12px; background: var(--panel); border-radius: 5px; padding: 1px 6px; color: var(--ink); }
+  .eq { display: block; padding: 8px 12px; margin: 6px 0; white-space: pre-wrap; }
+  .row-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 0 0 12px; }
+  .note { font-size: 11.8px; color: var(--muted); line-height: 1.5; }
+  @media (max-width: 620px) { .sl-grid { grid-template-columns: 1fr; } .bars .bar-row { grid-template-columns: 1fr 1fr 52px; } }
+
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a class="back-link" href="https://jane-natividad.github.io">&larr; Back to portfolio</a>
+  <div class="eyebrow">Clinical Operations · Simulation · Working Prototype</div>
+  <h1>Will we hit enrollment? The odds, not a single date</h1>
+  <p class="byline">Jane Natividad &nbsp;&middot;&nbsp; <a href="https://jane-natividad.github.io">jane-natividad.github.io</a> &nbsp;&middot;&nbsp; <a href="https://github.com/jane-natividad/enrollment-forecaster">View on GitHub</a></p>
+
+  <div class="lede">Enrollment plans are usually a straight line: sites &times; rate &times; months. Real recruitment isn't. Sites open late, some never recruit, and the good ones are far better than average. This forecaster simulates site start-up and patient recruitment <b>2,000 times</b> and tells you the <b>probability of hitting your target by your deadline</b>. Then it shows what each rescue lever, such as adding sites or opening them faster, actually does to those odds.</div>
+
+  <div class="section-label">1 · The plan (illustrative defaults)</div>
+  <div class="panel"><div class="sl-grid" id="plan"></div></div>
+
+  <div class="section-label">2 · Forecast</div>
+  <div class="kpis" id="kpis"></div>
+  <div class="card"><div id="fan"></div>
+    <div class="legend"><span><i style="background:#0071e3"></i>Median cumulative randomizations</span><span><i style="background:#0071e3;opacity:.25;height:10px"></i>10th–90th percentile of 2,000 runs</span><span><i style="background:#8e8e93"></i>Straight-line plan</span></div>
+  </div>
+  <p class="note" style="margin-top:8px" id="fan-note"></p>
+
+  <div class="section-label">3 · What if? Compare a rescue scenario</div>
+  <div class="row-actions" id="presets"></div>
+  <div class="panel"><div class="sl-grid" id="scen"></div></div>
+  <div class="card scroll-x"><table class="grid" id="compare"></table></div>
+  <div class="card" style="margin-top:10px"><div id="fan2"></div>
+    <div class="legend"><span><i style="background:#0071e3"></i>Baseline (median + 10–90% band)</span><span><i style="background:#1a7f4e"></i>Scenario (median + 10–90% band)</span></div></div>
+
+  <div class="section-label">4 · Which lever matters most?</div>
+  <p class="section-sub">Each lever improved by 20% on its own, with everything else held at baseline. Bars show the change in the odds of finishing by the deadline, in percentage points. Every lever uses the same random draws, so the differences come from the lever, not from chance.</p>
+  <div class="card bars" id="levers"></div>
+
+  <div class="section-label">Model card</div>
+  <div class="card model-card">
+    <h3>Model</h3>
+    Poisson–Gamma recruitment model, the standard approach in the clinical-operations forecasting literature (Anisimov &amp; Fedorov, 2007). For each simulated trial:
+    <span class="eq">site i activates at a_i ~ Uniform(first, last activation month)
+site i is non-performing with probability p_np  → rate λ_i = 0
+otherwise λ_i ~ Gamma(shape k = 1/CV², mean = λ̄)      (screened patients / site / month)
+randomizations in month t ~ Poisson( Σ_i λ_i · (1 − screen-fail) · exposure_i(t) )</span>
+    where exposure is the fraction of month <i>t</i> that site <i>i</i> was open. Screen failure thins the Poisson process, so randomizations stay Poisson.
+    <h3>What the outputs mean</h3>
+    <b>Odds of finishing by the deadline</b> is the share of the 2,000 runs that reach the target by that month. <b>P50/P80/P90</b> are the months by which 50%, 80% and 90% of runs have finished. ">36" means the target wasn't reached within the 36-month horizon. The band is the spread of simulated outcomes given these assumptions. It isn't a confidence interval on real-world performance.
+    <h3>Assumptions you supply</h3>
+    Every default, including rates, the activation window and the non-performer share, is illustrative. Nothing is drawn from a real trial or sponsor. The model assumes recruitment rates stay constant once a site is open, with no seasonality, saturation or site closures.
+    <h3>To calibrate it for real use</h3>
+    Fit the Gamma parameters to historical site-level recruitment from comparable trials. Replace the uniform activation window with actual start-up timelines. Then, once the trial is running, update the forecast with each site's observed recruitment, which is the Bayesian re-estimation step in the same literature.
+  </div>
+
+  <div class="why">"A straight-line enrollment plan has a hidden assumption: every site is average and on time. The simulation drops that assumption, and the first thing it usually shows is that the plan's finish date only has around even odds."</div>
+  <div class="disclosure">Prototype with illustrative, fictional inputs. Not calibrated to any real trial, sponsor or site network, and not a prediction of real enrollment.</div>
+  <footer>Built by <a href="https://jane-natividad.github.io">Jane Natividad</a>. No frameworks, no build step: a single static page and plain JavaScript, with a seeded random-number generator so every run is reproducible.</footer>
+</div>
+
+<script>
+(function () {
+  "use strict";
+  /* ---------- shared simulation + chart toolkit (no libraries) ---------- */
+  function makeRng(seed) { // mulberry32: fast, seedable, reproducible
+    var a = seed >>> 0;
+    return function () { a = (a + 0x6D2B79F5) | 0; var t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+  }
+  function randNormal(rng) { var u = 0, v = 0; while (u === 0) u = rng(); while (v === 0) v = rng(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); }
+  function randGamma(rng, shape, scale) { // Marsaglia–Tsang
+    if (shape < 1) { var g = randGamma(rng, shape + 1, scale); return g * Math.pow(rng(), 1 / shape); }
+    var d = shape - 1 / 3, c = 1 / Math.sqrt(9 * d);
+    for (;;) { var x, v; do { x = randNormal(rng); v = 1 + c * x; } while (v <= 0); v = v * v * v; var u = rng();
+      if (u < 1 - 0.0331 * x * x * x * x) return d * v * scale; if (Math.log(u) < 0.5 * x * x + d * (1 - v + Math.log(v))) return d * v * scale; }
+  }
+  function randPoisson(rng, lambda) {
+    if (lambda <= 0) return 0;
+    if (lambda > 30) return Math.max(0, Math.round(lambda + Math.sqrt(lambda) * randNormal(rng)));
+    var L = Math.exp(-lambda), k = 0, p = 1; do { k++; p *= rng(); } while (p > L); return k - 1;
+  }
+  function quantile(sorted, q) { if (!sorted.length) return NaN; var i = (sorted.length - 1) * q, lo = Math.floor(i), hi = Math.ceil(i); return sorted[lo] + (sorted[hi] - sorted[lo]) * (i - lo); }
+  function fmt(n, d) { return Number(n).toLocaleString("en-US", { maximumFractionDigits: d == null ? 0 : d, minimumFractionDigits: d == null ? 0 : d }); }
+  function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
+
+  // Chart: series = [{ points:[[x,y],...], color, width, dash, band:[[x,lo,hi],...] }], opts = {xLabel,yLabel,xMax,yMax,vlines:[{x,label,color}],hlines:[{y,label}]}
+  function lineChart(el, series, opts) {
+    var W = 720, H = 300, m = { l: 52, r: 16, t: 14, b: 40 };
+    var xs = [], ys = [];
+    series.forEach(function (s) { (s.points || []).forEach(function (p) { xs.push(p[0]); ys.push(p[1]); }); (s.band || []).forEach(function (b) { xs.push(b[0]); ys.push(b[2]); }); });
+    var xMax = opts.xMax || Math.max.apply(null, xs), yMax = opts.yMax || Math.max.apply(null, ys) * 1.08 || 1, xMin = opts.xMin || 0;
+    function X(x) { return m.l + (x - xMin) / (xMax - xMin) * (W - m.l - m.r); }
+    function Y(y) { return H - m.b - y / yMax * (H - m.t - m.b); }
+    var g = '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" role="img" aria-label="' + esc(opts.title || "chart") + '" style="display:block;max-width:100%;height:auto">';
+    for (var i = 0; i <= 4; i++) { var yv = yMax * i / 4; g += '<line x1="' + m.l + '" x2="' + (W - m.r) + '" y1="' + Y(yv) + '" y2="' + Y(yv) + '" stroke="#ececef"/><text x="' + (m.l - 8) + '" y="' + (Y(yv) + 4) + '" text-anchor="end" font-size="11" fill="#6e6e73">' + (opts.yFmt ? opts.yFmt(yv) : fmt(yv)) + '</text>'; }
+    var ticks = opts.xTicks || 6;
+    for (i = 0; i <= ticks; i++) { var xv = xMin + (xMax - xMin) * i / ticks; g += '<text x="' + X(xv) + '" y="' + (H - m.b + 18) + '" text-anchor="middle" font-size="11" fill="#6e6e73">' + (opts.xFmt ? opts.xFmt(xv) : fmt(xv)) + '</text>'; }
+    if (opts.xLabel) g += '<text x="' + ((m.l + W - m.r) / 2) + '" y="' + (H - 4) + '" text-anchor="middle" font-size="11" fill="#6e6e73">' + esc(opts.xLabel) + '</text>';
+    if (opts.yLabel) g += '<text x="12" y="' + ((m.t + H - m.b) / 2) + '" text-anchor="middle" font-size="11" fill="#6e6e73" transform="rotate(-90 12 ' + ((m.t + H - m.b) / 2) + ')">' + esc(opts.yLabel) + '</text>';
+    series.forEach(function (s) {
+      if (s.band && s.band.length) {
+        var up = s.band.map(function (b) { return X(b[0]) + "," + Y(b[2]); }).join(" "), dn = s.band.slice().reverse().map(function (b) { return X(b[0]) + "," + Y(b[1]); }).join(" ");
+        g += '<polygon points="' + up + " " + dn + '" fill="' + (s.bandColor || s.color) + '" opacity="' + (s.bandOpacity || 0.15) + '"/>';
+      }
+      if (s.area && s.points) { g += '<polygon points="' + X(s.points[0][0]) + "," + Y(0) + " " + s.points.map(function (p) { return X(p[0]) + "," + Y(p[1]); }).join(" ") + " " + X(s.points[s.points.length - 1][0]) + "," + Y(0) + '" fill="' + s.color + '" opacity="0.12"/>'; }
+      if (s.points) g += '<polyline fill="none" stroke="' + s.color + '" stroke-width="' + (s.width || 2.2) + '"' + (s.dash ? ' stroke-dasharray="' + s.dash + '"' : "") + ' points="' + s.points.map(function (p) { return X(p[0]) + "," + Y(p[1]); }).join(" ") + '"/>';
+    });
+    (opts.hlines || []).forEach(function (h) { g += '<line x1="' + m.l + '" x2="' + (W - m.r) + '" y1="' + Y(h.y) + '" y2="' + Y(h.y) + '" stroke="' + (h.color || "#1d1d1f") + '" stroke-dasharray="4 4"/><text x="' + (W - m.r - 4) + '" y="' + (Y(h.y) - 6) + '" text-anchor="end" font-size="11" fill="' + (h.color || "#1d1d1f") + '">' + esc(h.label) + '</text>'; });
+    (opts.vlines || []).forEach(function (v) { if (v.x < xMin || v.x > xMax) return; g += '<line x1="' + X(v.x) + '" x2="' + X(v.x) + '" y1="' + m.t + '" y2="' + (H - m.b) + '" stroke="' + (v.color || "#b3261e") + '" stroke-dasharray="4 4"/><text x="' + (X(v.x) + 5) + '" y="' + (m.t + 12) + '" font-size="11" fill="' + (v.color || "#b3261e") + '">' + esc(v.label) + '</text>'; });
+    el.innerHTML = g + "</svg>";
+  }
+
+  // Histogram of values with optional marker lines
+  function histogram(el, values, opts) {
+    var W = 720, H = 240, m = { l: 44, r: 16, t: 14, b: 40 }, bins = opts.bins || 30;
+    var lo = opts.min != null ? opts.min : Math.min.apply(null, values), hi = opts.max != null ? opts.max : Math.max.apply(null, values);
+    if (hi === lo) hi = lo + 1;
+    var w = (hi - lo) / bins, counts = new Array(bins).fill(0);
+    values.forEach(function (v) { var b = Math.min(bins - 1, Math.max(0, Math.floor((v - lo) / w))); counts[b]++; });
+    var cMax = Math.max.apply(null, counts) || 1;
+    function X(x) { return m.l + (x - lo) / (hi - lo) * (W - m.l - m.r); }
+    var g = '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" role="img" aria-label="' + esc(opts.title || "histogram") + '" style="display:block;max-width:100%;height:auto">';
+    counts.forEach(function (c, i) {
+      var x0 = lo + i * w, h = c / cMax * (H - m.t - m.b), col = opts.colorFn ? opts.colorFn(x0 + w / 2) : "#0071e3";
+      g += '<rect x="' + (X(x0) + 0.5) + '" y="' + (H - m.b - h) + '" width="' + Math.max(0, X(x0 + w) - X(x0) - 1) + '" height="' + h + '" fill="' + col + '" opacity="0.85"/>';
+    });
+    for (var i = 0; i <= 5; i++) { var xv = lo + (hi - lo) * i / 5; g += '<text x="' + X(xv) + '" y="' + (H - m.b + 18) + '" text-anchor="middle" font-size="11" fill="#6e6e73">' + (opts.xFmt ? opts.xFmt(xv) : fmt(xv)) + '</text>'; }
+    if (opts.xLabel) g += '<text x="' + ((m.l + W - m.r) / 2) + '" y="' + (H - 4) + '" text-anchor="middle" font-size="11" fill="#6e6e73">' + esc(opts.xLabel) + '</text>';
+    (opts.marks || []).forEach(function (mk, k) { if (mk.x < lo || mk.x > hi) return; g += '<line x1="' + X(mk.x) + '" x2="' + X(mk.x) + '" y1="' + m.t + '" y2="' + (H - m.b) + '" stroke="' + (mk.color || "#1d1d1f") + '" stroke-dasharray="4 4"/><text x="' + (X(mk.x) + 4) + '" y="' + (m.t + 12 + k * 14) + '" font-size="11" fill="' + (mk.color || "#1d1d1f") + '">' + esc(mk.label) + '</text>'; });
+    el.innerHTML = g + "</svg>";
+  }
+
+  // Slider helper: builds a labelled range input bound to state[key]
+  function slider(container, cfg, state, onChange) {
+    var row = document.createElement("div"); row.className = "sl-row";
+    var id = cfg.id || cfg.key;
+    row.innerHTML = '<label for="sl-' + id + '">' + esc(cfg.label) + '</label><span class="sl-val" id="sv-' + id + '"></span><input type="range" id="sl-' + id + '" min="' + cfg.min + '" max="' + cfg.max + '" step="' + cfg.step + '" value="' + state[cfg.key] + '">' + (cfg.hint ? '<div class="sl-hint">' + esc(cfg.hint) + '</div>' : "");
+    var input = row.querySelector("input"), val = row.querySelector(".sl-val");
+    function show() { val.textContent = cfg.fmt ? cfg.fmt(state[cfg.key]) : state[cfg.key]; }
+    input.addEventListener("input", function () { state[cfg.key] = parseFloat(input.value); show(); onChange(); });
+    show(); container.appendChild(row);
+    return { set: function (v) { state[cfg.key] = v; input.value = v; show(); } };
+  }
+
+  var HORIZON = 36, RUNS = 2000, SEED = 20261030;
+  var base = { target: 320, sites: 40, actFirst: 1, actLast: 8, rate: 1.2, cv: 0.8, nonPerf: 15, screenFail: 30, deadline: 16 };
+  var scen = { addSites: 5, actShift: 0, rateMult: 1.0, screenFail: 30, nonPerf: 15 };
+
+  function simulate(p, runs, seed) {
+    var rng = makeRng(seed), k = 1 / (p.cv * p.cv), cum = [], done = [];
+    for (var t = 0; t <= HORIZON; t++) cum.push([]);
+    for (var r = 0; r < runs; r++) {
+      var act = [], lam = [];
+      for (var i = 0; i < p.sites; i++) {
+        act.push(p.actFirst + rng() * Math.max(0, p.actLast - p.actFirst));
+        lam.push(rng() < p.nonPerf / 100 ? 0 : randGamma(rng, k, p.rate / k));
+      }
+      var c = 0, finish = Infinity; cum[0].push(0);
+      for (t = 1; t <= HORIZON; t++) {
+        var L = 0;
+        for (i = 0; i < p.sites; i++) { var e = Math.min(1, Math.max(0, t - act[i])); if (e > 0) L += lam[i] * e; }
+        c += randPoisson(rng, L * (1 - p.screenFail / 100));
+        cum[t].push(c);
+        if (finish === Infinity && c >= p.target) finish = t;
+      }
+      done.push(finish);
+    }
+    var band = [], med = [];
+    for (t = 0; t <= HORIZON; t++) { var s = cum[t].sort(function (a, b) { return a - b; }); med.push([t, quantile(s, 0.5)]); band.push([t, quantile(s, 0.1), quantile(s, 0.9)]); }
+    var sd = done.slice().sort(function (a, b) { return a - b; });
+    return { med: med, band: band, done: sd, pOnTime: done.filter(function (d) { return d <= p.deadline; }).length / runs, p50: quantile(sd, 0.5), p80: quantile(sd, 0.8), p90: quantile(sd, 0.9) };
+  }
+  function scenarioParams() {
+    return Object.assign({}, base, { sites: base.sites + scen.addSites, actFirst: Math.max(0, base.actFirst + scen.actShift), actLast: Math.max(0, base.actLast + scen.actShift), rate: base.rate * scen.rateMult, screenFail: scen.screenFail, nonPerf: scen.nonPerf });
+  }
+  function mo(x) { return isFinite(x) ? "Month " + Math.ceil(x) : ">36"; }
+  function straightLine(p) { // naive plan: every site average, opens mid-window, no non-performers
+    var mid = (p.actFirst + p.actLast) / 2, pts = [];
+    for (var t = 0; t <= HORIZON; t++) pts.push([t, Math.max(0, t - mid) * p.sites * p.rate * (1 - p.screenFail / 100)]);
+    return pts;
+  }
+
+  var planEl = document.getElementById("plan"), scenEl = document.getElementById("scen");
+  var PLAN = [
+    { key: "target", label: "Randomization target", min: 50, max: 800, step: 10 },
+    { key: "deadline", label: "Deadline", min: 6, max: 36, step: 1, fmt: function (v) { return "Month " + v; } },
+    { key: "sites", label: "Number of sites", min: 5, max: 120, step: 1 },
+    { key: "rate", label: "Average screened / site / month", min: 0.2, max: 4, step: 0.1, fmt: function (v) { return v.toFixed(1); } },
+    { key: "actFirst", label: "First site opens", min: 0, max: 12, step: 0.5, fmt: function (v) { return "Month " + v; } },
+    { key: "actLast", label: "Last site opens", min: 1, max: 24, step: 0.5, fmt: function (v) { return "Month " + v; } },
+    { key: "cv", label: "Site-to-site variability (CV)", min: 0.2, max: 1.5, step: 0.05, fmt: function (v) { return v.toFixed(2); }, hint: "How unevenly sites perform. Higher = a few stars and many slow sites." },
+    { key: "nonPerf", label: "Non-performing sites", min: 0, max: 40, step: 1, fmt: function (v) { return v + "%"; }, hint: "Sites that open but never randomize anyone." },
+    { key: "screenFail", label: "Screen-failure rate", min: 0, max: 70, step: 1, fmt: function (v) { return v + "%"; } }
+  ];
+  var SCEN = [
+    { key: "addSites", label: "Add sites", min: 0, max: 40, step: 1, fmt: function (v) { return "+" + v; } },
+    { key: "actShift", label: "Shift activation window", min: -4, max: 4, step: 0.5, fmt: function (v) { return (v > 0 ? "+" : "") + v + " mo"; }, hint: "Negative = sites open earlier." },
+    { key: "rateMult", label: "Recruitment-rate multiplier", min: 0.5, max: 2, step: 0.05, fmt: function (v) { return "×" + v.toFixed(2); } },
+    { key: "screenFail", id: "s-screenFail", label: "Screen-failure rate (scenario)", min: 0, max: 70, step: 1, fmt: function (v) { return v + "%"; } },
+    { key: "nonPerf", id: "s-nonPerf", label: "Non-performing sites (scenario)", min: 0, max: 40, step: 1, fmt: function (v) { return v + "%"; } }
+  ];
+  var timer = null; function schedule() { clearTimeout(timer); timer = setTimeout(renderAll, 120); }
+  var planCtl = {}, scenCtl = {};
+  PLAN.forEach(function (c) { planCtl[c.key] = slider(planEl, c, base, function () { if (base.actLast < base.actFirst) planCtl.actLast.set(base.actFirst); syncScenDefaults(); schedule(); }); });
+  SCEN.forEach(function (c) { scenCtl[c.key] = slider(scenEl, c, scen, schedule); });
+  function syncScenDefaults() { if (!scenTouched.sf) scenCtl.screenFail.set(base.screenFail); if (!scenTouched.np) scenCtl.nonPerf.set(base.nonPerf); }
+  var scenTouched = { sf: false, np: false };
+  document.getElementById("sl-s-screenFail").addEventListener("input", function () { scenTouched.sf = true; });
+  document.getElementById("sl-s-nonPerf").addEventListener("input", function () { scenTouched.np = true; });
+
+  var PRESETS = [
+    { name: "+5 sites", s: { addSites: 5, actShift: 0, rateMult: 1 } },
+    { name: "+15 sites", s: { addSites: 15, actShift: 0, rateMult: 1 } },
+    { name: "Open sites 2 months faster", s: { addSites: 0, actShift: -2, rateMult: 1 } },
+    { name: "Recruitment support (+25% rate)", s: { addSites: 0, actShift: 0, rateMult: 1.25 } },
+    { name: "Replace non-performers", s: { addSites: 0, actShift: 0, rateMult: 1, nonPerf: 5 } }
+  ];
+  PRESETS.forEach(function (pr) {
+    var b = document.createElement("button"); b.type = "button"; b.className = "chip"; b.textContent = pr.name;
+    b.addEventListener("click", function () {
+      scenCtl.addSites.set(pr.s.addSites); scenCtl.actShift.set(pr.s.actShift); scenCtl.rateMult.set(pr.s.rateMult);
+      scenCtl.screenFail.set(base.screenFail); scenCtl.nonPerf.set(pr.s.nonPerf != null ? pr.s.nonPerf : base.nonPerf);
+      document.querySelectorAll("#presets .chip").forEach(function (c) { c.classList.toggle("on", c === b); }); renderAll();
+    });
+    document.getElementById("presets").appendChild(b);
+  });
+
+  function kpi(label, value, sub, cls) { return '<div class="kpi ' + (cls || "") + '"><div class="k-l">' + label + '</div><div class="k-v">' + value + '</div><div class="k-s">' + sub + "</div></div>"; }
+
+  function renderAll() {
+    var B = simulate(base, RUNS, SEED), S = simulate(scenarioParams(), RUNS, SEED);
+    var pc = Math.round(B.pOnTime * 100), cls = pc >= 80 ? "good" : pc >= 50 ? "warn" : "bad";
+    var line = straightLine(base), lineFinish = (function () { for (var i = 0; i < line.length; i++) if (line[i][1] >= base.target) return i; return Infinity; })();
+    document.getElementById("kpis").innerHTML =
+      kpi("Odds of hitting target by month " + base.deadline, pc + "%", "share of 2,000 simulated trials", cls) +
+      kpi("Median finish (P50)", mo(B.p50), "half the runs finish by then") +
+      kpi("Likely-case finish (P80)", mo(B.p80), "80% of runs finish by then") +
+      kpi("Straight-line plan says", mo(lineFinish), "no variability, no non-performers");
+    var xm = Math.min(HORIZON, Math.max(base.deadline, isFinite(B.p90) ? Math.ceil(B.p90) : HORIZON) + 4);
+    function cut(a) { return a.slice(0, xm + 1); }
+    lineChart(document.getElementById("fan"), [
+      { band: cut(B.band), color: "#0071e3", bandOpacity: 0.18 }, { points: cut(B.med), color: "#0071e3" }, { points: cut(line), color: "#8e8e93", dash: "5 4", width: 1.6 }
+    ], { xMax: xm, xTicks: Math.min(6, xm), yMax: Math.max(base.target * 1.15, B.band[xm][2], line[xm][1]) * 1.04, xLabel: "Month", yLabel: "Cumulative randomizations", hlines: [{ y: base.target, label: "Target " + base.target, color: "#1d1d1f" }], vlines: [{ x: base.deadline, label: "Deadline", color: "#b3261e" }], title: "Enrollment fan chart" });
+    document.getElementById("fan-note").textContent = isFinite(lineFinish) && B.p50 > lineFinish
+      ? "The straight-line plan finishes in month " + lineFinish + ", but the simulated median is " + mo(B.p50).toLowerCase() + ". Late openings, non-performing sites and uneven sites mean the 'average' plan is optimistic."
+      : "Simulated spread of outcomes under your assumptions. Drag any slider to re-run.";
+    var rows = [["", "Baseline", "Scenario", "Change"],
+      ["Sites", base.sites, base.sites + scen.addSites, (scen.addSites ? "+" + scen.addSites : "—")],
+      ["Odds by month " + base.deadline, Math.round(B.pOnTime * 100) + "%", Math.round(S.pOnTime * 100) + "%", ((S.pOnTime - B.pOnTime) * 100 >= 0 ? "+" : "") + Math.round((S.pOnTime - B.pOnTime) * 100) + " pts"],
+      ["Median finish (P50)", mo(B.p50), mo(S.p50), isFinite(B.p50) && isFinite(S.p50) ? (Math.ceil(S.p50) - Math.ceil(B.p50)) + " mo" : "—"],
+      ["Likely-case finish (P80)", mo(B.p80), mo(S.p80), isFinite(B.p80) && isFinite(S.p80) ? (Math.ceil(S.p80) - Math.ceil(B.p80)) + " mo" : "—"],
+      ["Randomized by deadline (median)", fmt(B.med[base.deadline][1]), fmt(S.med[base.deadline][1]), "+" + fmt(S.med[base.deadline][1] - B.med[base.deadline][1])]];
+    document.getElementById("compare").innerHTML = rows.map(function (r, i) { return "<tr>" + r.map(function (c, j) { return i === 0 ? "<th>" + c + "</th>" : "<td" + (j === 0 ? " style='color:var(--ink);font-weight:600'" : "") + ">" + c + "</td>"; }).join("") + "</tr>"; }).join("");
+    lineChart(document.getElementById("fan2"), [
+      { band: cut(B.band), color: "#0071e3", bandOpacity: 0.12 }, { points: cut(B.med), color: "#0071e3" },
+      { band: cut(S.band), color: "#1a7f4e", bandOpacity: 0.12 }, { points: cut(S.med), color: "#1a7f4e" }
+    ], { xMax: xm, xTicks: Math.min(6, xm), yMax: Math.max(base.target * 1.15, S.band[xm][2], B.band[xm][2]) * 1.04, xLabel: "Month", yLabel: "Cumulative randomizations", hlines: [{ y: base.target, label: "Target" }], vlines: [{ x: base.deadline, label: "Deadline" }], title: "Baseline vs scenario" });
+    renderLevers(B);
+  }
+
+  function renderLevers(B) {
+    var n = 800, b0 = simulate(base, n, SEED).pOnTime;
+    var L = [
+      ["+20% sites", Object.assign({}, base, { sites: Math.round(base.sites * 1.2) })],
+      ["+20% recruitment rate", Object.assign({}, base, { rate: base.rate * 1.2 })],
+      ["Activation window 20% shorter", Object.assign({}, base, { actLast: base.actFirst + (base.actLast - base.actFirst) * 0.8 })],
+      ["Screen failure 20% lower", Object.assign({}, base, { screenFail: base.screenFail * 0.8 })],
+      ["Non-performers 20% fewer", Object.assign({}, base, { nonPerf: base.nonPerf * 0.8 })],
+      ["Site variability 20% lower", Object.assign({}, base, { cv: base.cv * 0.8 })]
+    ].map(function (l) { return { name: l[0], d: (simulate(l[1], n, SEED).pOnTime - b0) * 100 }; }).sort(function (a, b) { return b.d - a.d; });
+    var mx = Math.max(5, Math.max.apply(null, L.map(function (l) { return Math.abs(l.d); })));
+    document.getElementById("levers").innerHTML = L.map(function (l) {
+      var w = Math.abs(l.d) / mx * 50, left = l.d >= 0 ? 50 : 50 - w;
+      return '<div class="bar-row"><span>' + l.name + '</span><div class="bar-wrap"><div class="mid"></div><span style="left:' + left + '%;width:' + w + '%;background:' + (l.d >= 0 ? "var(--good)" : "var(--bad)") + '"></span></div><span class="bar-num">' + (l.d >= 0 ? "+" : "") + l.d.toFixed(0) + " pts</span></div>";
+    }).join("") + '<p class="note" style="margin:10px 0 0">Baseline odds in this 800-run comparison: ' + Math.round(b0 * 100) + "%. When the odds are already close to 0% or 100%, every lever looks small. That's how probabilities behave, not a sign the lever is useless.</p>";
+  }
+
+  // test hook (used by automated checks, harmless in the page)
+  window.__enrollment = { simulate: simulate, base: base, HORIZON: HORIZON };
+  renderAll();
+})();
+</script>
+</body>
+</html>
